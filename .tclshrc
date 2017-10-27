@@ -122,6 +122,7 @@ if {$tcl_interactive == 1} {
     }
 }
 
-;; Local Variables:
-;; mode: tcl
-;; End:
+
+# Local Variables:
+# mode: tcl
+# End:
