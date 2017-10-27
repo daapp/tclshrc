@@ -1,0 +1,127 @@
+if {$tcl_interactive == 1} {
+
+    tcl::tm::path add ~/lib/tcl
+    lappend auto_path ~/lib/tcl
+    #lappend auto_path /usr/local/lib
+    puts "Tcl $tcl_patchLevel"
+    puts "auto_path:\n[join [lsort $auto_path] \n]"
+
+    interp alias {} printenv {} parray env
+    interp alias {} cp       {} file copy
+    interp alias {} mv       {} file rename
+    interp alias {} rm       {} file delete
+    interp alias {} mkdir    {} file mkdir
+
+    # define "help" command, which also be available with alises "h" and "?"
+    proc help {command} {
+        switch -nocase -- $::tcl_platform(os) {
+            darwin {
+                exec osascript -e "tell application \"Terminal\" to do script \"man n $command;exit\""
+            }
+            linux {
+                if {[info exists ::env(DISPLAY)] && $::env(DISPLAY) ne "" } {
+                    exec xterm -e man -S 3tcl:3tk $command &
+                } else {
+                    exec man -S 3tcl:3tk $command
+                }
+            }
+            default {
+                puts "Sorry, ho help command defined for platform $::tcl_platform(os)"
+            }
+        }
+    }
+    interp alias {} h {} help
+    interp alias {} ? {} help
+
+    proc % {args} {uplevel 1 $args}
+
+    proc K {a args} {set a}
+    proc S {a b c}  {$a $c [$b $c]}
+    proc I {a}      {S K K $a}
+
+    proc <  filename          {K [read [set fp [open $filename]]] [close $fp]}
+    proc >  {filename string} {K [puts -nonewline [set fp [open $filename w]] $string] [close $fp]}
+    proc >> {filename string} {K [puts -nonewline [set fp [open $filename a]] $string] [close $fp]}
+
+    proc lambda {argl body} {K [info level 0] [proc [info level 0] $argl $body]}
+
+    proc lfilter {list script} {
+        set res {}
+        foreach e $list {if {[uplevel 1 $script $e]} {lappend res $e}}
+        return $res
+    }
+
+    proc in {list e} {expr {[lsearch -exact $list $e] >= 0}}
+
+    proc lspackages {{pattern *}} {
+        # Force the package loader to do its thing:
+        # NOTE: this depends on a side effect of the
+        # built-in [package unknown].  Other [package unknown]
+        # handlers might not meet our expectations.
+        eval [package unknown] Tcl [package provide Tcl]
+        foreach package [lsort [package names]] {
+            if {![string match $pattern $package]} { continue }
+            foreach version [package versions $package] {
+                set present [expr {
+                                   [string compare $version [package provide $package]]
+                                   ? " " : "+" }]
+                set ifneeded \
+                    [string replace \
+                         [string trim \
+                              [string map {"\n" " " "\t" " "} \
+                                   [package ifneeded $package $version]]] \
+                         50 end "..."]
+                puts [format "%1s%-15s %6s %-55s" \
+                          $present $package $version $ifneeded]
+            }
+        }
+    }
+    # convert Tcl string value to hexadecimal escape sequence
+    # like \x65\x66\x67 for abc
+    proc str2hex {str} {
+        binary scan $str H* hex
+        regsub -all -- {..} $hex {\\x&} hex
+        return $hex
+    }
+    # convert Tcl string value to unicode escape sequence
+    # line \u043F\u0440\u0438\u0432\u0435\u0442 for "привет"
+    proc u2x s {
+        set res ""
+        foreach c [split $s ""] {
+            scan $c %c int
+            append res [expr {$int<128? $c :"\\u[format %04.4X $int]"}]
+        }
+        return $res
+    }
+
+    proc regsub-eval {re string cmd} {
+        subst [regsub -all $re [string map {\[ \\[ \] \\] \$ \\$ \\ \\\\} $string] "\[$cmd\]"]
+    }
+    # regsub-eval {%([:xdigit:][:xdigit:])} $str {binary format H2 \1}
+
+
+    if {$::env(TERM) ne "dumb"} {
+        if { ! [catch {package require tclreadline}]} {
+
+            namespace eval tclreadline {
+                proc prompt1 {} {
+                        return "$::argv0 [lindex [file split [pwd]] end]/> "
+                }
+            }
+            set tclreadline::historyLength 200
+
+            tclreadline::Loop
+        }
+    }
+
+    # register HTTPS protocol for http package
+    package require http
+    if {![catch {package require tls}]} {
+        puts "Register HTTPS protocol"
+        http::register https 443 tls::socket
+    }
+}
+
+;; Local Variables:
+;; mode: tcl
+;; End:
