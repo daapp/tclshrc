@@ -99,6 +99,20 @@ if {$tcl_interactive == 1} {
     }
     # regsub-eval {%([:xdigit:][:xdigit:])} $str {binary format H2 \1}
 
+    # register HTTPS protocol for http package
+    package require http
+    if {![catch {package require tls}]} {
+        puts "Register HTTPS protocol"
+        http::register https 443 tls::socket
+    }
+
+    if {$::env(DISPLAY) ne ""} {
+        package require Tk
+        wm withdraw .
+        puts "Tk was loaded. Use 'wm deiconify .' to show root window."
+    }
+
+
 
     if {$::env(TERM) ne "dumb"} {
         if { ! [catch {package require tclreadline}]} {
@@ -112,13 +126,6 @@ if {$tcl_interactive == 1} {
 
             tclreadline::Loop
         }
-    }
-
-    # register HTTPS protocol for http package
-    package require http
-    if {![catch {package require tls}]} {
-        puts "Register HTTPS protocol"
-        http::register https 443 tls::socket
     }
 }
 
