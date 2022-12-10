@@ -97,7 +97,7 @@ if {$tcl_interactive == 1} {
     proc regsub-eval {re string cmd} {
         subst [regsub -all $re [string map {\[ \\[ \] \\] \$ \\$ \\ \\\\} $string] "\[$cmd\]"]
     }
-    # regsub-eval {%([:xdigit:][:xdigit:])} $str {binary format H2 \1}
+    # regsub-eval {%([[:xdigit:]][[:xdigit:]])} $str {binary format H2 \1}
 
     # register HTTPS protocol for http package
     package require http
@@ -106,7 +106,8 @@ if {$tcl_interactive == 1} {
         http::register https 443 tls::socket
     }
 
-    if {$::env(DISPLAY) ne ""} {
+    puts "try Tk"
+    if {$::tcl_interactive == 1 && $::env(DISPLAY) ne ""} {
         package require Tk
         wm withdraw .
         puts "Tk was loaded. Use 'wm deiconify .' to show root window."
